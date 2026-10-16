@@ -170,10 +170,24 @@
 
         <!-- ==================== CRUD ==================== -->
         <!--
-          Semua field form (termasuk Publikasi Extended: penulis, nama_jurnal,
-          nama_penerbit, topik, sumber_web, link_eksternal) di-generate
-          otomatis oleh script.js berdasarkan konfigurasi KATEGORI.publikasi.
-          Tidak perlu ubah HTML di sini.
+          Semua field form di-generate otomatis oleh script.js berdasarkan
+          konfigurasi KATEGORI[page].fields.
+
+          Field Extended per kategori:
+          • PUBLIKASI : judul, penulis, jenis (Laporan/Jurnal/Profil/Buku/Artikel),
+                        nama_jurnal (khusus Jurnal), nama_penerbit (khusus Buku/Artikel),
+                        topik (datalist + free text), tahun, deskripsi, akses_file,
+                        dokumen (GDrive), nama_web_jurnal (datalist: Google Scholar,
+                        Sinta, Garuda, Scopus, dll), link_scholar (URL)
+          • INOVASI   : + jenis_inovasi, bentuk_inovasi, status, akses_file, laporan
+          • RISET     : + kategori (datalist), akses_file, dokumen, gambar
+          • HKI       : + jenis, nomor, status_proses, sertifikat, link_file
+          • KOMPETISI : + penyelenggara, kategori (datalist), tanggal_mulai/selesai,
+                        hadiah, status_kompetisi, link_pendaftaran, gambar
+          • KALENDER  : + pemilik, tanggal_mulai/jam_mulai, tanggal_selesai/jam_selesai,
+                        gambar, link_kegiatan
+
+          Tidak perlu ubah HTML di sini — cukup edit KATEGORI di script.js.
         -->
         <div id="adm-crud" class="adm-page">
           <div class="page-head crud-head">
@@ -196,6 +210,20 @@
                 Klik tombol
                 <b style="background:#059669;color:#fff;padding:2px 8px;border-radius:4px;font-size:11px;">Ikuti Pelatihan</b>
                 untuk mendaftar atau mengikuti pelatihan tersebut.
+              </p>
+            </div>
+          </div>
+
+          <!-- ⬇️ Info Publikasi Extended (BARU) -->
+          <div id="crudPublikasiInfo" class="info-box" style="display:none;background:#EFF6FF;border-left-color:#3B82F6;">
+            <i class="fas fa-book-open" style="color:#3B82F6;"></i>
+            <div>
+              <p style="color:#1E40AF;"><b>Panduan Field Publikasi</b></p>
+              <p style="margin-top:4px;font-size:12px;color:#1E40AF;line-height:1.7;">
+                • <b>Nama Jurnal</b> — isi hanya jika jenis = <b>Jurnal</b><br>
+                • <b>Nama Penerbit</b> — isi hanya jika jenis = <b>Buku</b> atau <b>Artikel</b><br>
+                • <b>Topik</b> — pilih dari daftar atau ketik topik baru<br>
+                • <b>Nama Web Jurnal</b> — akan tampil sebagai badge (mis. <i class="fas fa-graduation-cap"></i> <b>Sinta</b>, <b>Garuda</b>, <b>Scopus</b>, <b>Google Scholar</b>). Bisa ketik nama web lain yang belum ada di daftar.
               </p>
             </div>
           </div>
@@ -229,7 +257,7 @@
           <div class="toolbar toolbar-flex">
             <div class="toolbar-search">
               <i class="fas fa-search toolbar-icon"></i>
-              <input type="text" id="crudSearch" placeholder="Cari data..." oninput="renderCrud()">
+              <input type="text" id="crudSearch" placeholder="Cari judul, penulis, topik, atau kata kunci..." oninput="renderCrud()">
             </div>
             <!-- Filter status approval akan di-inject oleh JS di sini -->
             <div class="toolbar-actions">
