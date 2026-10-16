@@ -98,11 +98,9 @@
         <button class="side-btn" onclick="showAdminPage('pelatihan', this)">
           <i class="fas fa-chalkboard-teacher"></i> Pelatihan
         </button>
-        <!-- ⬇️ TAMBAHAN: Menu Kompetisi Inovasi & Riset -->
         <button class="side-btn" onclick="showAdminPage('kompetisi', this)">
           <i class="fas fa-trophy"></i> Kompetisi
         </button>
-        <!-- ⬇️ Menu Kalender Kegiatan -->
         <button class="side-btn" onclick="showAdminPage('kalender_kegiatan', this)">
           <i class="fas fa-calendar-days"></i> Kalender Kegiatan
         </button>
@@ -130,7 +128,6 @@
             <p id="dashboardSubtitle">Ringkasan data TODDOPULI</p>
           </div>
 
-          <!-- Stat Cards -->
           <div class="stat-grid">
             <div class="stat-card" style="--c:#1E3A8A"><i class="fas fa-lightbulb"></i><h3 id="dashInovasi">0</h3><p>Inovasi</p></div>
             <div class="stat-card" style="--c:#1D4ED8"><i class="fas fa-flask"></i><h3 id="dashRiset">0</h3><p>Riset</p></div>
@@ -141,7 +138,6 @@
             <div class="stat-card" style="--c:#075985"><i class="fas fa-database"></i><h3 id="dashDb">0</h3><p>Database</p></div>
           </div>
 
-          <!-- Charts -->
           <div class="page-head" style="margin-top:30px;">
             <h3><i class="fas fa-chart-pie"></i> Statistik Visual</h3>
           </div>
@@ -164,7 +160,6 @@
             </div>
           </div>
 
-          <!-- Activity -->
           <div class="page-head" style="margin-top:30px;">
             <h3><i class="fas fa-clock-rotate-left"></i> Aktivitas Terkini</h3>
           </div>
@@ -185,7 +180,7 @@
             </button>
           </div>
 
-          <!-- Info Pelatihan — untuk Admin OPD & Masyarakat -->
+          <!-- Info Pelatihan -->
           <div id="crudPelatihanInfo" class="info-box" style="display:none;background:#F0FDF4;border-left-color:#059669;">
             <i class="fas fa-chalkboard-teacher" style="color:#059669;"></i>
             <div>
@@ -199,7 +194,7 @@
             </div>
           </div>
 
-          <!-- Info Approval — untuk Admin OPD & Masyarakat -->
+          <!-- Info Approval -->
           <div id="crudApprovalInfo" class="info-box warning" style="display:none;">
             <i class="fas fa-clock"></i>
             <div>
@@ -224,7 +219,7 @@
             </div>
           </div>
 
-          <!-- Toolbar: Search + Export/Import -->
+          <!-- Toolbar: Search + Export/Import + View Toggle (BARU) -->
           <div class="toolbar toolbar-flex">
             <div class="toolbar-search">
               <i class="fas fa-search toolbar-icon"></i>
@@ -240,6 +235,10 @@
               </button>
               <button class="btn-tool" onclick="triggerImport()" title="Import dari Excel">
                 <i class="fas fa-file-import"></i> <span>Import</span>
+              </button>
+              <!-- ⬇️ TAMBAHAN: Tombol View Toggle (Grid/List) -->
+              <button class="btn-view-toggle" id="viewToggleAdmin" onclick="toggleViewAdmin()" title="Ganti Tampilan">
+                <i class="fas fa-list"></i>
               </button>
               <input type="file" id="importFile" accept=".xlsx,.xls" style="display:none" onchange="handleImport(this)">
             </div>
@@ -534,19 +533,16 @@
       <option value="super_admin">Super Admin (akses penuh)</option>
     </select>
 
-    <!-- Field OPD — tampil hanya kalau role = admin_opd -->
     <div id="u_opd_wrapper" style="display:none;">
       <label>OPD <span style="color:#DC2626">*</span></label>
       <select id="u_opd">
         <option value="">-- Pilih OPD --</option>
-        <!-- Options diisi oleh JS dari collection 'opd' -->
       </select>
       <small style="color:#F59E0B;font-size:11px;display:block;margin-top:-6px;margin-bottom:10px;">
         <i class="fas fa-info-circle"></i> Pastikan OPD sudah ada di menu <b>OPD</b> terlebih dahulu.
       </small>
     </div>
 
-    <!-- Field Password — dibungkus wrapper agar bisa show/hide -->
     <div id="u_pass_wrapper">
       <label>Password (untuk akun baru)</label>
       <input type="text" id="u_pass" placeholder="Min. 6 karakter">
@@ -563,11 +559,6 @@
 
 <!-- ==================== SCRIPT ==================== -->
 <script type="module" src="script.js"></script>
-
-<!-- Debug (opsional): aktifkan hanya kalau perlu cek error
-<script src="https://cdn.jsdelivr.net/npm/eruda"></script>
-<script>eruda.init();</script>
--->
 
 </body>
 </html>
