@@ -145,7 +145,7 @@
       </div>
     </div>
 
-    <!-- ⬇️ WIDGET: KALENDER KEGIATAN -->
+    <!-- WIDGET: KALENDER KEGIATAN -->
     <div class="widget-card" style="margin-top:24px;">
       <div class="widget-head">
         <h3><i class="fas fa-calendar-days"></i> Kalender Kegiatan</h3>
@@ -156,7 +156,7 @@
       </div>
     </div>
 
-    <!-- ⬇️ WIDGET: KOMPETISI INOVASI & RISET (BARU) -->
+    <!-- WIDGET: KOMPETISI INOVASI & RISET -->
     <div class="widget-card" style="margin-top:24px;">
       <div class="widget-head">
         <h3><i class="fas fa-trophy"></i> Kompetisi Inovasi &amp; Riset</h3>
@@ -196,6 +196,7 @@
       </div>
     </div>
 
+    <!-- Toolbar Inovasi (dengan Sort + View Toggle) -->
     <div class="toolbar toolbar-inovasi">
       <div class="toolbar-search">
         <i class="fas fa-search toolbar-icon"></i>
@@ -216,6 +217,16 @@
         <option>Digital</option>
         <option>Non Digital</option>
       </select>
+      <select id="sortInovasi" onchange="renderInovasi()" title="Urutkan">
+        <option value="">Terbaru</option>
+        <option value="judul-asc">Nama A-Z</option>
+        <option value="judul-desc">Nama Z-A</option>
+        <option value="tahun-desc">Tahun Terbaru</option>
+        <option value="tahun-asc">Tahun Terlama</option>
+      </select>
+      <button class="btn-view-toggle" id="viewToggleInovasi" onclick="toggleView('inovasi')" title="Ganti Tampilan">
+        <i class="fas fa-list"></i>
+      </button>
     </div>
     <div id="listInovasi" class="list-grid"><div class="loading">Memuat data...</div></div>
   </section>
@@ -232,7 +243,7 @@
       </div>
     </div>
 
-    <!-- ⬇️ Toolbar dengan Filter Kategori -->
+    <!-- Toolbar Riset (dengan Sort + View Toggle) -->
     <div class="toolbar toolbar-inovasi">
       <div class="toolbar-search">
         <i class="fas fa-search toolbar-icon"></i>
@@ -246,6 +257,16 @@
         <option value="">Semua Tahun</option>
         <option>2025</option><option>2024</option><option>2023</option><option>2022</option><option>2021</option><option>2020</option>
       </select>
+      <select id="sortRiset" onchange="renderRiset()" title="Urutkan">
+        <option value="">Terbaru</option>
+        <option value="judul-asc">Nama A-Z</option>
+        <option value="judul-desc">Nama Z-A</option>
+        <option value="tahun-desc">Tahun Terbaru</option>
+        <option value="tahun-asc">Tahun Terlama</option>
+      </select>
+      <button class="btn-view-toggle" id="viewToggleRiset" onclick="toggleView('riset')" title="Ganti Tampilan">
+        <i class="fas fa-list"></i>
+      </button>
     </div>
     <div id="listRiset" class="list-grid"><div class="loading">Memuat data...</div></div>
   </section>
@@ -262,9 +283,34 @@
       </div>
     </div>
 
-    <div class="toolbar">
-      <i class="fas fa-search toolbar-icon"></i>
-      <input type="text" id="searchPub" placeholder="Cari publikasi..." oninput="renderPublikasi()">
+    <!-- Toolbar Publikasi (dengan Filter + Sort + View Toggle) -->
+    <div class="toolbar toolbar-inovasi">
+      <div class="toolbar-search">
+        <i class="fas fa-search toolbar-icon"></i>
+        <input type="text" id="searchPub" placeholder="Cari publikasi..." oninput="renderPublikasi()">
+      </div>
+      <select id="filterTahunPub" onchange="renderPublikasi()">
+        <option value="">Semua Tahun</option>
+        <option>2025</option><option>2024</option><option>2023</option><option>2022</option><option>2021</option><option>2020</option>
+      </select>
+      <select id="filterJenisPub" onchange="renderPublikasi()">
+        <option value="">Semua Jenis</option>
+        <option>Laporan</option>
+        <option>Jurnal</option>
+        <option>Profil</option>
+        <option>Buku</option>
+        <option>Artikel</option>
+      </select>
+      <select id="sortPublikasi" onchange="renderPublikasi()" title="Urutkan">
+        <option value="">Terbaru</option>
+        <option value="judul-asc">Nama A-Z</option>
+        <option value="judul-desc">Nama Z-A</option>
+        <option value="tahun-desc">Tahun Terbaru</option>
+        <option value="tahun-asc">Tahun Terlama</option>
+      </select>
+      <button class="btn-view-toggle" id="viewTogglePublikasi" onclick="toggleView('publikasi')" title="Ganti Tampilan">
+        <i class="fas fa-list"></i>
+      </button>
     </div>
     <div id="listPublikasi" class="list-grid"><div class="loading">Memuat data...</div></div>
   </section>
@@ -369,9 +415,30 @@
       </div>
     </div>
 
-    <div class="toolbar">
-      <i class="fas fa-search toolbar-icon"></i>
-      <input type="text" id="searchDb" placeholder="Cari data..." oninput="renderDatabase()">
+    <!-- Toolbar Database (dengan Filter + Sort + View Toggle) -->
+    <div class="toolbar toolbar-inovasi">
+      <div class="toolbar-search">
+        <i class="fas fa-search toolbar-icon"></i>
+        <input type="text" id="searchDb" placeholder="Cari dataset..." oninput="renderDatabase()">
+      </div>
+      <select id="filterKategoriDb" onchange="renderDatabase()">
+        <option value="">Semua Kategori</option>
+        <!-- Options diisi otomatis oleh JS -->
+      </select>
+      <select id="filterTahunDb" onchange="renderDatabase()">
+        <option value="">Semua Tahun</option>
+        <option>2025</option><option>2024</option><option>2023</option><option>2022</option><option>2021</option><option>2020</option>
+      </select>
+      <select id="sortDatabase" onchange="renderDatabase()" title="Urutkan">
+        <option value="">Terbaru</option>
+        <option value="judul-asc">Nama A-Z</option>
+        <option value="judul-desc">Nama Z-A</option>
+        <option value="tahun-desc">Tahun Terbaru</option>
+        <option value="tahun-asc">Tahun Terlama</option>
+      </select>
+      <button class="btn-view-toggle" id="viewToggleDatabase" onclick="toggleView('database')" title="Ganti Tampilan">
+        <i class="fas fa-list"></i>
+      </button>
     </div>
     <div id="listDatabase" class="list-grid"><div class="loading">Memuat data...</div></div>
   </section>
