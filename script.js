@@ -1,5 +1,5 @@
 /* ============================================================
-   TODDOPULI v4.8 - Script Utama
+   TODDOPULI v4.9 - Script Utama
    Firebase + Cloudinary + Chart + Excel + Realtime + Multi-Admin
    + Google Drive Link + OPD Management + Inovasi Extended
    + Filter + ROLE ADMIN OPD + APPROVAL + WIDGET + HKI EXTENDED
@@ -12,6 +12,7 @@
    + RISET EXTENDED (Kategori, Gambar, Filter kategori & tahun)
    + SELECT_OR_TEXT + IMAGE UPLOAD/GDRIVE COMBO
    + KOMPETISI INOVASI & RISET (Widget, Status, Deadline, Filter)
+   + SORT (A-Z, Z-A, Tahun) + VIEW TOGGLE (Grid/List) + DOWNLOAD CARD
 ============================================================ */
 
 import {
@@ -246,6 +247,17 @@ let chartBentukInstance = null;
 let isFirstSnapshot = true;
 
 // ============================================================
+// STATE VIEW MODE (grid / list) per kategori — BARU
+// ============================================================
+const viewMode = {
+  inovasi: 'grid',
+  riset: 'grid',
+  publikasi: 'grid',
+  database: 'grid'
+};
+let adminViewMode = 'grid';
+
+// ============================================================
 // STATE KALENDER
 // ============================================================
 let kalenderMonth = new Date().getMonth();
@@ -419,6 +431,95 @@ function waLink(phone, text) {
 }
 
 // ============================================================
+// SORT & VIEW HELPERS — BARU
+// ============================================================
+function sortData(list, sortBy) {
+  const arr = [...list];
+  switch (sortBy) {
+    case 'judul-asc':
+      arr.sort((a, b) => String(a.judul || '').localeCompare(String(b.judul || ''), 'id', { sensitivity: 'base' }));
+      break;
+    case 'judul-desc':
+      arr.sort((a, b) => String(b.judul || '').localeCompare(String(a.judul || ''), 'id', { sensitivity: 'base' }));
+      break;
+    case 'tahun-desc':
+      arr.sort((a, b) => (parseInt(b.tahun) || 0) - (parseInt(a.tahun) || 0));
+      break;
+    case 'tahun-asc':
+      arr.sort((a, b) => (parseInt(a.tahun) || 0) - (parseInt(b.tahun) || 0));
+      break;
+    default:
+      break;
+  }
+  return arr;
+}
+
+function toggleView(kategori) {
+  if (!viewMode[kategori]) viewMode[kategori] = 'grid';
+  viewMode[kategori] = viewMode[kategori] === 'grid' ? 'list' : 'grid';
+
+  const capitalize = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+  const container = $('list' + capitalize(kategori));
+  if (container) {
+    container.classList.toggle('view-list', viewMode[kategori] === 'list');
+  }
+
+  const btn = $('viewToggle' + capitalize(kategori));
+  if (btn) {
+    btn.innerHTML = viewMode[kategori] === 'grid'
+      ? '<i class="fas fa-list"></i>'
+      : '<i class="fas fa-th-large"></i>';
+    btn.title = viewMode[kategori] === 'grid' ? 'Tampilan List' : 'Tampilan Grid';
+  }
+}
+
+function toggleViewAdmin() {
+  adminViewMode = adminViewMode === 'grid' ? 'list' : 'grid';
+
+  const container = $('crudList');
+  if (container) {
+    container.classList.toggle('view-list', adminViewMode === 'list');
+  }
+
+  const btn = $('viewToggleAdmin');
+  if (btn) {
+    btn.innerHTML = adminViewMode === 'grid'
+      ? '<i class="fas fa-list"></i>'
+      : '<i class="fas fa-th-large"></i>';
+    btn.title = adminViewMode === 'grid' ? 'Tampilan List' : 'Tampilan Grid';
+  }
+}
+
+function buildDownloadButton(d, kategori) {
+  // Cari file key: laporan (inovasi) atau dokumen (lainnya)
+  const fileKey = d.laporan ? 'laporan' : (d.dokumen ? 'dokumen' : null);
+  if (!fileKey) return '';
+  const fileUrl = d[fileKey];
+  if (!fileUrl) return '';
+
+  const akses = d.akses_file || 'Publik';
+  const isAdmin = typeof isAdminOrAbove === 'function' && isAdminOrAbove();
+
+  // Admin selalu bisa download langsung
+  if (akses === 'Publik' || isAdmin) {
+    return `<a href="${esc(normalizeDriveUrl(fileUrl))}"
+      target="_blank" rel="noopener"
+      class="btn-card-download"
+      onclick="event.stopPropagation();"
+      title="Download ${fileKey === 'laporan' ? 'Laporan' : 'Dokumen'}">
+      <i class="fas fa-download"></i> Download
+    </a>`;
+  }
+
+  // File Terbatas → tombol Minta Akses
+  return `<button class="btn-card-download btn-card-locked"
+    onclick="event.stopPropagation();openAccessRequest('${kategori}','${d.id}','${fileKey}')"
+    title="File Terbatas - Perlu Izin">
+    <i class="fas fa-lock"></i> Minta Akses
+  </button>`;
+}
+
+// ============================================================
 // LOAD DATA
 // ============================================================
 async function loadAllData() {
@@ -585,9 +686,11 @@ function buildInovasiCard(d) {
   const jenis = d.jenis_inovasi ? `<span class="badge badge-jenis">${esc(d.jenis_inovasi)}</span>` : '';
   const bentuk = d.bentuk_inovasi ? `<span class="badge badge-bentuk">${esc(d.bentuk_inovasi)}</span>` : '';
   const opdTahun = (d.opd || d.tahun) ? `<span class="badge">${esc(d.opd || '')}${d.opd && d.tahun ? ' • ' : ''}${esc(d.tahun || '')}</span>` : '';
+  const downloadBtn = buildDownloadButton(d, 'inovasi');
   return `<div class="item item-inovasi" onclick="showDetail('inovasi','${d.id}')">
     ${img}<h4>${esc(d.judul)}</h4><p>${esc(descCut)}</p>
     <div class="badge-row">${opdTahun}${jenis}${bentuk}</div>${inovator}
+    ${downloadBtn}
   </div>`;
 }
 
@@ -601,9 +704,40 @@ function buildRisetCard(d) {
   const kategori = d.kategori ? `<span class="badge badge-jenis">${esc(d.kategori)}</span>` : '';
   const peneliti = d.peneliti ? `<span class="badge">${esc(d.peneliti)}</span>` : '';
   const tahun = d.tahun ? `<span class="badge">${esc(d.tahun)}</span>` : '';
+  const downloadBtn = buildDownloadButton(d, 'riset');
   return `<div class="item item-riset" onclick="showDetail('riset','${d.id}')">
     ${img}<h4>${esc(d.judul)}</h4><p>${esc(descCut)}</p>
     <div class="badge-row">${kategori}${peneliti}${tahun}</div>
+    ${downloadBtn}
+  </div>`;
+}
+
+function buildPublikasiCard(d) {
+  const imgSrc = d.gambar ? getImageUrl(d.gambar) : '';
+  const img = imgSrc ? `<img class="thumb" src="${esc(imgSrc)}" alt="" loading="lazy" onerror="this.style.display='none'">` : '';
+  const desc = String(d.deskripsi || '');
+  const descCut = desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
+  const jenis = d.jenis ? `<span class="badge badge-jenis">${esc(d.jenis)}</span>` : '';
+  const tahun = d.tahun ? `<span class="badge">${esc(d.tahun)}</span>` : '';
+  const downloadBtn = buildDownloadButton(d, 'publikasi');
+  return `<div class="item item-publikasi" onclick="showDetail('publikasi','${d.id}')">
+    ${img}<h4>${esc(d.judul)}</h4><p>${esc(descCut)}</p>
+    <div class="badge-row">${jenis}${tahun}</div>
+    ${downloadBtn}
+  </div>`;
+}
+
+function buildDatabaseCard(d) {
+  const imgSrc = d.gambar ? getImageUrl(d.gambar) : '';
+  const img = imgSrc ? `<img class="thumb" src="${esc(imgSrc)}" alt="" loading="lazy" onerror="this.style.display='none'">` : '';
+  const desc = String(d.deskripsi || '');
+  const descCut = desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
+  const kategori = d.kategori ? `<span class="badge badge-jenis">${esc(d.kategori)}</span>` : '';
+  const downloadBtn = buildDownloadButton(d, 'database');
+  return `<div class="item item-database" onclick="showDetail('database','${d.id}')">
+    ${img}<h4>${esc(d.judul)}</h4><p>${esc(descCut)}</p>
+    <div class="badge-row">${kategori}</div>
+    ${downloadBtn}
   </div>`;
 }
 
@@ -700,6 +834,7 @@ function renderInovasi() {
   const th = $('filterTahunInovasi')?.value || '';
   const jenis = $('filterJenisInovasi')?.value || '';
   const bentuk = $('filterBentukInovasi')?.value || '';
+  const sortBy = $('sortInovasi')?.value || '';
 
   let d = filterForPublic('inovasi', cachedData.inovasi);
   if (q) d = d.filter(x =>
@@ -711,7 +846,11 @@ function renderInovasi() {
   if (jenis) d = d.filter(x => x.jenis_inovasi === jenis);
   if (bentuk) d = d.filter(x => x.bentuk_inovasi === bentuk);
 
-  $('listInovasi').innerHTML = d.length
+  d = sortData(d, sortBy);
+
+  const container = $('listInovasi');
+  container.classList.toggle('view-list', viewMode.inovasi === 'list');
+  container.innerHTML = d.length
     ? d.map(buildInovasiCard).join('')
     : emptyMsg('Belum ada data inovasi yang sesuai filter.');
 }
@@ -721,6 +860,7 @@ function renderRiset() {
   const q = ($('searchRiset')?.value || '').toLowerCase();
   const katFilter = $('filterKategoriRiset')?.value || '';
   const thFilter  = $('filterTahunRiset')?.value || '';
+  const sortBy    = $('sortRiset')?.value || '';
 
   populateKategoriRisetFilter();
 
@@ -733,7 +873,11 @@ function renderRiset() {
   if (katFilter) d = d.filter(x => x.kategori === katFilter);
   if (thFilter)  d = d.filter(x => String(x.tahun) === String(thFilter));
 
-  $('listRiset').innerHTML = d.length
+  d = sortData(d, sortBy);
+
+  const container = $('listRiset');
+  container.classList.toggle('view-list', viewMode.riset === 'list');
+  container.innerHTML = d.length
     ? d.map(buildRisetCard).join('')
     : emptyMsg('Belum ada data riset yang sesuai filter.');
 }
@@ -754,11 +898,24 @@ function populateKategoriRisetFilter() {
 function renderPublikasi() {
   if (!$('listPublikasi')) return;
   const q = ($('searchPub')?.value || '').toLowerCase();
+  const th = $('filterTahunPub')?.value || '';
+  const jenis = $('filterJenisPub')?.value || '';
+  const sortBy = $('sortPublikasi')?.value || '';
+
   let d = cachedData.publikasi;
-  if (q) d = d.filter(x => (x.judul||'').toLowerCase().includes(q));
-  $('listPublikasi').innerHTML = d.length
-    ? d.map(x => buildCard(x, 'publikasi', `${x.jenis} • ${x.tahun}`)).join('')
-    : emptyMsg('Belum ada publikasi.');
+  if (q) d = d.filter(x =>
+    (x.judul||'').toLowerCase().includes(q) ||
+    (x.deskripsi||'').toLowerCase().includes(q));
+  if (th) d = d.filter(x => String(x.tahun) === String(th));
+  if (jenis) d = d.filter(x => x.jenis === jenis);
+
+  d = sortData(d, sortBy);
+
+  const container = $('listPublikasi');
+  container.classList.toggle('view-list', viewMode.publikasi === 'list');
+  container.innerHTML = d.length
+    ? d.map(buildPublikasiCard).join('')
+    : emptyMsg('Belum ada publikasi yang sesuai filter.');
 }
 
 function renderHki() {
@@ -797,11 +954,37 @@ function renderPelatihan() {
 function renderDatabase() {
   if (!$('listDatabase')) return;
   const q = ($('searchDb')?.value || '').toLowerCase();
+  const katFilter = $('filterKategoriDb')?.value || '';
+  const thFilter = $('filterTahunDb')?.value || '';
+  const sortBy = $('sortDatabase')?.value || '';
+
+  populateKategoriDbFilter();
+
   let d = cachedData.database;
-  if (q) d = d.filter(x => (x.judul||'').toLowerCase().includes(q));
-  $('listDatabase').innerHTML = d.length
-    ? d.map(x => buildCard(x, 'database', x.kategori)).join('')
-    : emptyMsg('Belum ada data.');
+  if (q) d = d.filter(x =>
+    (x.judul||'').toLowerCase().includes(q) ||
+    (x.deskripsi||'').toLowerCase().includes(q));
+  if (katFilter) d = d.filter(x => x.kategori === katFilter);
+  if (thFilter) d = d.filter(x => String(x.tahun) === String(thFilter));
+
+  d = sortData(d, sortBy);
+
+  const container = $('listDatabase');
+  container.classList.toggle('view-list', viewMode.database === 'list');
+  container.innerHTML = d.length
+    ? d.map(buildDatabaseCard).join('')
+    : emptyMsg('Belum ada data yang sesuai filter.');
+}
+
+function populateKategoriDbFilter() {
+  const sel = $('filterKategoriDb');
+  if (!sel) return;
+  const cur = sel.value;
+  const list = [...new Set(
+    (cachedData.database || []).map(x => x.kategori).filter(Boolean)
+  )].sort();
+  sel.innerHTML = '<option value="">Semua Kategori</option>' +
+    list.map(k => `<option value="${esc(k)}"${k===cur?' selected':''}>${esc(k)}</option>`).join('');
 }
 
 // ============================================================
@@ -1554,7 +1737,6 @@ function renderWidgetKompetisi() {
   if (!container) return;
 
   const today = todayStr();
-  // Filter: yang belum selesai, sort by tanggal_selesai terdekat
   const events = (cachedData.kompetisi || [])
     .filter(e => {
       const status = e.status_kompetisi || getAutoKompetisiStatus(e);
@@ -2018,7 +2200,6 @@ function renderCrud() {
     const rejectInfo = (approvalStatus === 'rejected' && d.rejectReason)
       ? `<div class="meta" style="font-size:10px;color:#DC2626;margin-top:4px;"><i class="fas fa-circle-exclamation"></i> ${esc(d.rejectReason)}</div>` : '';
     const approvalRow = showApproval ? `<div style="margin-top:8px;">${approvalBadge(d)}</div>` : '';
-    // Untuk kompetisi, tampilkan status kompetisi juga
     const kompetisiRow = (k === 'kompetisi')
       ? `<div style="margin-top:6px;">${getKompetisiStatusBadge(d)}</div>` : '';
     const approvalBtns = showApprovalButtons ? `<div style="display:flex;gap:6px;margin-top:10px;">
@@ -2037,6 +2218,12 @@ function renderCrud() {
       </div>
     </div>`;
   }).join('');
+
+  // Konsisten view mode admin setelah render
+  const crudContainer = $('crudList');
+  if (crudContainer) {
+    crudContainer.classList.toggle('view-list', adminViewMode === 'list');
+  }
 }
 
 // ============================================================
@@ -2270,7 +2457,6 @@ async function saveForm() {
 
   if (k === 'hki' && !data.status_proses) data.status_proses = 'Diajukan';
 
-  // Auto-fill status_kompetisi jika kosong
   if (k === 'kompetisi' && !data.status_kompetisi) {
     data.status_kompetisi = getAutoKompetisiStatus(data);
   }
@@ -2960,7 +3146,10 @@ Object.assign(window, {
   // Riset Extended
   buildRisetCard, populateKategoriRisetFilter,
   // Kompetisi Inovasi & Riset
-  renderWidgetKompetisi, buildKompetisiCard, getKompetisiStatusBadge, getDeadlineInfo, getAutoKompetisiStatus
+  renderWidgetKompetisi, buildKompetisiCard, getKompetisiStatusBadge, getDeadlineInfo, getAutoKompetisiStatus,
+  // Sort + View Toggle + Download (BARU)
+  sortData, toggleView, toggleViewAdmin, buildDownloadButton,
+  populateKategoriDbFilter, buildPublikasiCard, buildDatabaseCard
 });
 
 // ============================================================
