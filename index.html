@@ -275,19 +275,22 @@
   <section id="page-publikasi" class="page">
     <h2 class="section-title"><i class="fas fa-book"></i> Publikasi</h2>
 
-    <!-- Info Box Akses File -->
+    <!-- Info Box Akses File + Panduan Publikasi Extended -->
     <div class="info-box">
-      <i class="fas fa-file-download"></i>
+      <i class="fas fa-book-open"></i>
       <div>
-        <p><b>Cara Mengakses File Publikasi:</b> Beberapa file publikasi dapat langsung diunduh, sebagian lagi perlu <b>minta akses via WhatsApp</b>. Klik <b>"Minta Akses Dokumen"</b> pada publikasi terkait untuk mengajukan permintaan.</p>
+        <p><b>Kumpulan Publikasi Ilmiah & Dokumen Resmi:</b> Terdiri dari Jurnal, Buku, Artikel, Laporan, dan Profil. Setiap publikasi dilengkapi <b>Nama Penulis</b>, <b>Topik</b>, dan tautan ke <b>Web Jurnal/Repositori</b> (Google Scholar, Sinta, Garuda, Scopus, dll).</p>
+        <p style="margin-top:6px;font-size:12px;">Beberapa file dapat langsung diunduh, sebagian lagi perlu <b>minta akses via WhatsApp</b>. Klik <b>"Minta Akses Dokumen"</b> pada publikasi terkait untuk mengajukan permintaan.</p>
       </div>
     </div>
 
-    <!-- ⬇️ Toolbar Publikasi (dengan Filter Topik BARU + Sort + View Toggle) -->
+    <!-- ⬇️ Toolbar Publikasi: Search + Tahun + Jenis + Topik + Web Jurnal + Sort + View Toggle -->
     <div class="toolbar toolbar-inovasi">
       <div class="toolbar-search">
         <i class="fas fa-search toolbar-icon"></i>
-        <input type="text" id="searchPub" placeholder="Cari judul / penulis / jurnal / topik..." oninput="renderPublikasi()">
+        <input type="text" id="searchPub"
+          placeholder="Cari judul / penulis / jurnal / penerbit / topik..."
+          oninput="renderPublikasi()">
       </div>
       <select id="filterTahunPub" onchange="renderPublikasi()">
         <option value="">Semua Tahun</option>
@@ -301,10 +304,14 @@
         <option>Buku</option>
         <option>Artikel</option>
       </select>
-      <!-- ⬇️ Filter Topik BARU -->
+      <!-- Filter Topik (diisi otomatis oleh JS) -->
       <select id="filterTopikPub" onchange="renderPublikasi()">
         <option value="">Semua Topik</option>
-        <!-- Options diisi otomatis oleh JS -->
+      </select>
+      <!-- ⬇️ BARU: Filter Web Jurnal / Repositori -->
+      <select id="filterWebPub" onchange="renderPublikasi()">
+        <option value="">Semua Web Jurnal</option>
+        <!-- Options diisi otomatis oleh JS dari data yang ada -->
       </select>
       <select id="sortPublikasi" onchange="renderPublikasi()" title="Urutkan">
         <option value="">Terbaru</option>
