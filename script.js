@@ -1,5 +1,5 @@
 /* ============================================================
-   TODDOPULI v4.9 - Script Utama
+   TODDOPULI v5.0 - Script Utama
    Firebase + Cloudinary + Chart + Excel + Realtime + Multi-Admin
    + Google Drive Link + OPD Management + Inovasi Extended
    + Filter + ROLE ADMIN OPD + APPROVAL + WIDGET + HKI EXTENDED
@@ -13,6 +13,7 @@
    + SELECT_OR_TEXT + IMAGE UPLOAD/GDRIVE COMBO
    + KOMPETISI INOVASI & RISET (Widget, Status, Deadline, Filter)
    + SORT (A-Z, Z-A, Tahun) + VIEW TOGGLE (Grid/List) + DOWNLOAD CARD
+   + LIHAT DOKUMEN + GOOGLE SCHOLAR + FIX LIST VIEW + TAHUN DATABASE
 ============================================================ */
 
 import {
@@ -101,7 +102,8 @@ const KATEGORI = {
       { key:'deskripsi', label:'Deskripsi', type:'textarea', required:true },
       { key:'akses_file', label:'Akses File Publikasi', type:'select',
         options:['Publik','Terbatas'], required:true },
-      { key:'dokumen', label:'Link Publikasi (Google Drive)', type:'text' }
+      { key:'dokumen', label:'Link Publikasi (Google Drive)', type:'text' },
+      { key:'link_scholar', label:'Link Google Scholar / Repositori (opsional)', type:'url' }
     ]
   },
   hki: {
@@ -161,6 +163,7 @@ const KATEGORI = {
     fields: [
       { key:'judul', label:'Nama Dataset', type:'text', required:true },
       { key:'kategori', label:'Kategori', type:'text', required:true },
+      { key:'tahun', label:'Tahun', type:'text', required:true },
       { key:'deskripsi', label:'Deskripsi', type:'textarea', required:true },
       { key:'akses_file', label:'Akses File Dataset', type:'select',
         options:['Publik','Terbatas'], required:true },
@@ -217,7 +220,9 @@ const CREATOR_ONLY_CREATE = ['pelatihan', 'kalender_kegiatan', 'kompetisi'];
 function needsApproval(k) { return APPROVAL_KATEGORI.includes(k); }
 function creatorOnly(k) { return CREATOR_ONLY_CREATE.includes(k); }
 function getApprovalStatus(d) { return d?.approval_status || 'approved'; }
-function isUrlField(key) { return ['gambar','dokumen','sertifikat','laporan','link_file','link_kegiatan','link_pendaftaran'].includes(key); }
+function isUrlField(key) {
+  return ['gambar','dokumen','sertifikat','laporan','link_file','link_kegiatan','link_pendaftaran','link_scholar'].includes(key);
+}
 
 // ============================================================
 // STATE GLOBAL
@@ -247,7 +252,7 @@ let chartBentukInstance = null;
 let isFirstSnapshot = true;
 
 // ============================================================
-// STATE VIEW MODE (grid / list) per kategori — BARU
+// STATE VIEW MODE (grid / list) per kategori
 // ============================================================
 const viewMode = {
   inovasi: 'grid',
@@ -420,6 +425,15 @@ function normalizeDriveImageUrl(url) {
   if (!fileId) return s;
   return `https://drive.google.com/thumbnail?id=${fileId}&sz=w1000`;
 }
+function normalizeDriveDownloadUrl(url) {
+  if (!url) return '';
+  const s = String(url).trim();
+  if (!s) return '';
+  if (!s.includes('drive.google.com') && !s.includes('docs.google.com')) return s;
+  const fileId = extractDriveFileId(s);
+  if (!fileId) return s;
+  return `https://drive.google.com/uc?export=download&id=${fileId}`;
+}
 function getImageUrl(url) {
   if (!url) return '';
   if (url.includes('drive.google.com') || url.includes('docs.google.com')) return normalizeDriveImageUrl(url);
@@ -431,7 +445,7 @@ function waLink(phone, text) {
 }
 
 // ============================================================
-// SORT & VIEW HELPERS — BARU
+// SORT & VIEW HELPERS
 // ============================================================
 function sortData(list, sortBy) {
   const arr = [...list];
@@ -490,8 +504,10 @@ function toggleViewAdmin() {
   }
 }
 
-function buildDownloadButton(d, kategori) {
-  // Cari file key: laporan (inovasi) atau dokumen (lainnya)
+// ============================================================
+// DOKUMEN BUTTONS — Lihat + Download (atau Minta Akses)
+// ============================================================
+function buildDocumentButtons(d, kategori) {
   const fileKey = d.laporan ? 'laporan' : (d.dokumen ? 'dokumen' : null);
   if (!fileKey) return '';
   const fileUrl = d[fileKey];
@@ -499,24 +515,36 @@ function buildDownloadButton(d, kategori) {
 
   const akses = d.akses_file || 'Publik';
   const isAdmin = typeof isAdminOrAbove === 'function' && isAdminOrAbove();
+  const label = fileKey === 'laporan' ? 'Laporan' : 'Dokumen';
 
-  // Admin selalu bisa download langsung
+  // Publik atau admin → boleh lihat & download
   if (akses === 'Publik' || isAdmin) {
-    return `<a href="${esc(normalizeDriveUrl(fileUrl))}"
-      target="_blank" rel="noopener"
-      class="btn-card-download"
-      onclick="event.stopPropagation();"
-      title="Download ${fileKey === 'laporan' ? 'Laporan' : 'Dokumen'}">
-      <i class="fas fa-download"></i> Download
-    </a>`;
+    const viewUrl = normalizeDriveUrl(fileUrl);
+    const downloadUrl = normalizeDriveDownloadUrl(fileUrl);
+    return `<div class="card-btn-group">
+      <a href="${esc(viewUrl)}" target="_blank" rel="noopener"
+        class="btn-card-view"
+        onclick="event.stopPropagation();"
+        title="Lihat ${label}">
+        <i class="fas fa-eye"></i> Lihat ${label}
+      </a>
+      <a href="${esc(downloadUrl)}" target="_blank" rel="noopener"
+        class="btn-card-download"
+        onclick="event.stopPropagation();"
+        title="Download ${label}">
+        <i class="fas fa-download"></i> Download
+      </a>
+    </div>`;
   }
 
-  // File Terbatas → tombol Minta Akses
-  return `<button class="btn-card-download btn-card-locked"
-    onclick="event.stopPropagation();openAccessRequest('${kategori}','${d.id}','${fileKey}')"
-    title="File Terbatas - Perlu Izin">
-    <i class="fas fa-lock"></i> Minta Akses
-  </button>`;
+  // Terbatas → minta akses
+  return `<div class="card-btn-group">
+    <button class="btn-card-download btn-card-locked"
+      onclick="event.stopPropagation();openAccessRequest('${kategori}','${d.id}','${fileKey}')"
+      title="File Terbatas - Perlu Izin">
+      <i class="fas fa-lock"></i> Minta Akses ${label}
+    </button>
+  </div>`;
 }
 
 // ============================================================
@@ -669,10 +697,11 @@ function hkiStatusBadge(d) {
 function buildCard(d, k, extraLabel = '') {
   const imgSrc = d.gambar ? getImageUrl(d.gambar) : '';
   const img = imgSrc ? `<img class="thumb" src="${esc(imgSrc)}" alt="" loading="lazy" onerror="this.style.display='none'">` : '';
+  const hasImage = !!imgSrc;
   const badge = extraLabel ? `<span class="badge">${esc(extraLabel)}</span>` : '';
   const desc = String(d.deskripsi || '');
   const descCut = desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
-  return `<div class="item" onclick="showDetail('${k}','${d.id}')">
+  return `<div class="item${hasImage ? '' : ' no-image'}" onclick="showDetail('${k}','${d.id}')">
     ${img}<h4>${esc(d.judul)}</h4><p>${esc(descCut)}</p>${badge}
   </div>`;
 }
@@ -680,17 +709,18 @@ function buildCard(d, k, extraLabel = '') {
 function buildInovasiCard(d) {
   const imgSrc = d.gambar ? getImageUrl(d.gambar) : '';
   const img = imgSrc ? `<img class="thumb" src="${esc(imgSrc)}" alt="" loading="lazy" onerror="this.style.display='none'">` : '';
+  const hasImage = !!imgSrc;
   const desc = String(d.deskripsi || '');
   const descCut = desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
   const inovator = d.nama_inovator ? `<div class="meta"><i class="fas fa-user"></i> ${esc(d.nama_inovator)}</div>` : '';
   const jenis = d.jenis_inovasi ? `<span class="badge badge-jenis">${esc(d.jenis_inovasi)}</span>` : '';
   const bentuk = d.bentuk_inovasi ? `<span class="badge badge-bentuk">${esc(d.bentuk_inovasi)}</span>` : '';
   const opdTahun = (d.opd || d.tahun) ? `<span class="badge">${esc(d.opd || '')}${d.opd && d.tahun ? ' • ' : ''}${esc(d.tahun || '')}</span>` : '';
-  const downloadBtn = buildDownloadButton(d, 'inovasi');
-  return `<div class="item item-inovasi" onclick="showDetail('inovasi','${d.id}')">
+  const docButtons = buildDocumentButtons(d, 'inovasi');
+  return `<div class="item item-inovasi${hasImage ? '' : ' no-image'}" onclick="showDetail('inovasi','${d.id}')">
     ${img}<h4>${esc(d.judul)}</h4><p>${esc(descCut)}</p>
     <div class="badge-row">${opdTahun}${jenis}${bentuk}</div>${inovator}
-    ${downloadBtn}
+    ${docButtons}
   </div>`;
 }
 
@@ -699,51 +729,63 @@ function buildRisetCard(d) {
   const img = imgSrc
     ? `<img class="thumb" src="${esc(imgSrc)}" alt="" loading="lazy" onerror="this.style.display='none'">`
     : '';
+  const hasImage = !!imgSrc;
   const desc = String(d.deskripsi || '');
   const descCut = desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
   const kategori = d.kategori ? `<span class="badge badge-jenis">${esc(d.kategori)}</span>` : '';
   const peneliti = d.peneliti ? `<span class="badge">${esc(d.peneliti)}</span>` : '';
   const tahun = d.tahun ? `<span class="badge">${esc(d.tahun)}</span>` : '';
-  const downloadBtn = buildDownloadButton(d, 'riset');
-  return `<div class="item item-riset" onclick="showDetail('riset','${d.id}')">
+  const docButtons = buildDocumentButtons(d, 'riset');
+  return `<div class="item item-riset${hasImage ? '' : ' no-image'}" onclick="showDetail('riset','${d.id}')">
     ${img}<h4>${esc(d.judul)}</h4><p>${esc(descCut)}</p>
     <div class="badge-row">${kategori}${peneliti}${tahun}</div>
-    ${downloadBtn}
+    ${docButtons}
   </div>`;
 }
 
 function buildPublikasiCard(d) {
   const imgSrc = d.gambar ? getImageUrl(d.gambar) : '';
   const img = imgSrc ? `<img class="thumb" src="${esc(imgSrc)}" alt="" loading="lazy" onerror="this.style.display='none'">` : '';
+  const hasImage = !!imgSrc;
   const desc = String(d.deskripsi || '');
   const descCut = desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
   const jenis = d.jenis ? `<span class="badge badge-jenis">${esc(d.jenis)}</span>` : '';
   const tahun = d.tahun ? `<span class="badge">${esc(d.tahun)}</span>` : '';
-  const downloadBtn = buildDownloadButton(d, 'publikasi');
-  return `<div class="item item-publikasi" onclick="showDetail('publikasi','${d.id}')">
+  const scholar = d.link_scholar
+    ? `<a href="${esc(d.link_scholar)}" target="_blank" rel="noopener"
+         class="badge badge-scholar"
+         onclick="event.stopPropagation();"
+         title="Lihat di Google Scholar">
+         <i class="fas fa-graduation-cap"></i> Scholar
+       </a>` : '';
+  const docButtons = buildDocumentButtons(d, 'publikasi');
+  return `<div class="item item-publikasi${hasImage ? '' : ' no-image'}" onclick="showDetail('publikasi','${d.id}')">
     ${img}<h4>${esc(d.judul)}</h4><p>${esc(descCut)}</p>
-    <div class="badge-row">${jenis}${tahun}</div>
-    ${downloadBtn}
+    <div class="badge-row">${jenis}${tahun}${scholar}</div>
+    ${docButtons}
   </div>`;
 }
 
 function buildDatabaseCard(d) {
   const imgSrc = d.gambar ? getImageUrl(d.gambar) : '';
   const img = imgSrc ? `<img class="thumb" src="${esc(imgSrc)}" alt="" loading="lazy" onerror="this.style.display='none'">` : '';
+  const hasImage = !!imgSrc;
   const desc = String(d.deskripsi || '');
   const descCut = desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
   const kategori = d.kategori ? `<span class="badge badge-jenis">${esc(d.kategori)}</span>` : '';
-  const downloadBtn = buildDownloadButton(d, 'database');
-  return `<div class="item item-database" onclick="showDetail('database','${d.id}')">
+  const tahun = d.tahun ? `<span class="badge">${esc(d.tahun)}</span>` : '';
+  const docButtons = buildDocumentButtons(d, 'database');
+  return `<div class="item item-database${hasImage ? '' : ' no-image'}" onclick="showDetail('database','${d.id}')">
     ${img}<h4>${esc(d.judul)}</h4><p>${esc(descCut)}</p>
-    <div class="badge-row">${kategori}</div>
-    ${downloadBtn}
+    <div class="badge-row">${kategori}${tahun}</div>
+    ${docButtons}
   </div>`;
 }
 
 function buildKompetisiCard(d) {
   const imgSrc = d.gambar ? getImageUrl(d.gambar) : '';
   const img = imgSrc ? `<img class="thumb" src="${esc(imgSrc)}" alt="" loading="lazy" onerror="this.style.display='none'">` : '';
+  const hasImage = !!imgSrc;
   const desc = String(d.deskripsi || '');
   const descCut = desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
   const kategori = d.kategori ? `<span class="badge badge-jenis">${esc(d.kategori)}</span>` : '';
@@ -754,7 +796,7 @@ function buildKompetisiCard(d) {
          <i class="fas ${deadline.icon}"></i> ${deadline.label}
        </span>` : '';
   const statusBadge = `<div style="margin-top:8px;">${getKompetisiStatusBadge(d)}</div>`;
-  return `<div class="item item-kompetisi" onclick="showDetail('kompetisi','${d.id}')">
+  return `<div class="item item-kompetisi${hasImage ? '' : ' no-image'}" onclick="showDetail('kompetisi','${d.id}')">
     ${img}<h4>${esc(d.judul)}</h4><p>${esc(descCut)}</p>
     <div class="badge-row">${kategori}${penyelenggara}${deadlineBadge}</div>
     ${statusBadge}
@@ -1124,7 +1166,7 @@ function showDetail(k, id) {
     html += `<div style="margin-bottom:14px;">${getKompetisiStatusBadge(d)}</div>`;
   }
   cfg.fields.forEach(f => {
-    if (['judul','gambar','dokumen','sertifikat','laporan','link_file','email_pemilik','akses_file','link_kegiatan','link_pendaftaran'].includes(f.key)) return;
+    if (['judul','gambar','dokumen','sertifikat','laporan','link_file','email_pemilik','akses_file','link_kegiatan','link_pendaftaran','link_scholar'].includes(f.key)) return;
     if (d[f.key] != null && d[f.key] !== '') {
       const val = f.type === 'date' ? formatTanggal(d[f.key]) : esc(d[f.key]);
       html += `<p style="margin-bottom:10px;"><b>${f.label}:</b><br>${val}</p>`;
@@ -1139,14 +1181,32 @@ function showDetail(k, id) {
     const canDirectAccess = !aksesTerbatas || isAdminOrAbove();
 
     if (canDirectAccess) {
-      const btnColor = aksesTerbatas ? 'background:#059669;' : '';
-      html += `<a href="${esc(normalizeDriveUrl(d[key]))}" target="_blank" rel="noopener" class="btn-primary" style="margin-top:12px;text-decoration:none;display:inline-block;${btnColor}"><i class="fas fa-${aksesTerbatas ? 'download' : 'file-pdf'}"></i> ${aksesTerbatas ? 'Download' : 'Lihat'} ${fieldLabel}</a> `;
+      const viewUrl = normalizeDriveUrl(d[key]);
+      const downloadUrl = normalizeDriveDownloadUrl(d[key]);
+      html += `<a href="${esc(viewUrl)}" target="_blank" rel="noopener"
+        class="btn-primary"
+        style="margin-top:12px;text-decoration:none;display:inline-block;">
+        <i class="fas fa-eye"></i> Lihat ${fieldLabel}
+      </a> `;
+      html += `<a href="${esc(downloadUrl)}" target="_blank" rel="noopener"
+        class="btn-primary"
+        style="margin-top:12px;text-decoration:none;display:inline-block;background:#059669;">
+        <i class="fas fa-download"></i> Download
+      </a> `;
     } else {
       html += `<button class="btn-primary" style="margin-top:12px;background:#F59E0B;color:#fff;" onclick="event.stopPropagation();openAccessRequest('${k}','${d.id}','${key}')"><i class="fas fa-lock"></i> Minta Akses ${fieldLabel}</button> `;
     }
   });
 
   if (d.sertifikat) html += `<a href="${esc(normalizeDriveUrl(d.sertifikat))}" target="_blank" rel="noopener" class="btn-primary" style="margin-top:12px;text-decoration:none;display:inline-block;"><i class="fas fa-file-certificate"></i> Lihat Sertifikat</a> `;
+
+  if (k === 'publikasi' && d.link_scholar) {
+    html += `<a href="${esc(d.link_scholar)}" target="_blank" rel="noopener"
+      class="btn-primary"
+      style="margin-top:12px;text-decoration:none;display:inline-block;background:#4285F4;">
+      <i class="fas fa-graduation-cap"></i> Lihat di Google Scholar
+    </a> `;
+  }
 
   if (k === 'pelatihan' && d.link_pelatihan) {
     html += `<a href="${esc(d.link_pelatihan)}" target="_blank" rel="noopener" class="btn-ikuti" style="margin-top:12px;display:inline-block;text-decoration:none;"><i class="fas fa-external-link-alt"></i> Ikuti Pelatihan</a>`;
@@ -1159,7 +1219,7 @@ function showDetail(k, id) {
   if (k === 'hki' && d.link_file) {
     const isOwner = d.email_pemilik && currentUser?.email === d.email_pemilik;
     if (isOwner || isAdminOrAbove()) {
-      html += `<a href="${esc(normalizeDriveUrl(d.link_file))}" target="_blank" rel="noopener" class="btn-primary" style="margin-top:12px;text-decoration:none;display:inline-block;background:#059669;"><i class="fas fa-download"></i> Download Karya</a>`;
+      html += `<a href="${esc(normalizeDriveDownloadUrl(d.link_file))}" target="_blank" rel="noopener" class="btn-primary" style="margin-top:12px;text-decoration:none;display:inline-block;background:#059669;"><i class="fas fa-download"></i> Download Karya</a>`;
     } else {
       html += `<button class="btn-primary" style="margin-top:12px;background:#F59E0B;color:#fff;" onclick="event.stopPropagation();openHkiRequest('${d.id}')"><i class="fas fa-lock"></i> Minta Akses Download</button>`;
     }
@@ -2186,6 +2246,7 @@ function renderCrud() {
   container.innerHTML = list.map(d => {
     const imgSrc = d.gambar ? getImageUrl(d.gambar) : '';
     const img = imgSrc ? `<img class="thumb" src="${esc(imgSrc)}" alt="" onerror="this.style.display='none'">` : '';
+    const hasImage = !!imgSrc;
     const badge = d.opd || d.jenis || d.kategori || d.peneliti || d.pemilik || d.penyelenggara;
     const date = d.tanggal ? formatTanggal(d.tanggal) : d.tahun;
     const desc = String(d.deskripsi || '');
@@ -2206,7 +2267,7 @@ function renderCrud() {
       <button onclick="event.stopPropagation();approveItem('${d.id}')" class="btn-approve"><i class="fas fa-check"></i> Setujui</button>
       <button onclick="event.stopPropagation();rejectItem('${d.id}')" class="btn-reject"><i class="fas fa-times"></i> Tolak</button>
     </div>` : '';
-    return `<div class="crud-item">
+    return `<div class="crud-item${hasImage ? '' : ' no-image'}">
       ${img}<h4>${esc(d.judul)}</h4><p>${esc(descCut)}</p>
       ${badge ? `<span class="badge">${esc(badge)}</span>` : ''}
       ${date ? `<div class="meta" style="font-size:11px;color:#94A3B8;margin-top:6px;"><i class="fas fa-calendar"></i> ${esc(date)}</div>` : ''}
@@ -2219,7 +2280,6 @@ function renderCrud() {
     </div>`;
   }).join('');
 
-  // Konsisten view mode admin setelah render
   const crudContainer = $('crudList');
   if (crudContainer) {
     crudContainer.classList.toggle('view-list', adminViewMode === 'list');
@@ -3129,7 +3189,7 @@ Object.assign(window, {
   renderGaleri, renderPubGaleri, openUserForm, editUser, closeUserForm, saveUser, hapusUser,
   renderInovasi, renderRiset, renderPublikasi, renderHki, renderBerita,
   renderPelatihan, renderDatabase, renderCrud, renderHkiEdukasi, renderHkiWidget,
-  normalizeDriveUrl, normalizeDriveImageUrl, toggleUserOpdField,
+  normalizeDriveUrl, normalizeDriveImageUrl, normalizeDriveDownloadUrl, toggleUserOpdField,
   approveItem, rejectItem, openHkiRequest, submitHkiRequest, showEdukasiDetail,
   openEdukasiForm, closeEdukasiForm, saveEdukasi, hapusEdukasi, toggleEdukasiFields,
   renderHkiEdukasiAdmin, renderHkiRequests, renderRegistrations,
@@ -3147,8 +3207,8 @@ Object.assign(window, {
   buildRisetCard, populateKategoriRisetFilter,
   // Kompetisi Inovasi & Riset
   renderWidgetKompetisi, buildKompetisiCard, getKompetisiStatusBadge, getDeadlineInfo, getAutoKompetisiStatus,
-  // Sort + View Toggle + Download (BARU)
-  sortData, toggleView, toggleViewAdmin, buildDownloadButton,
+  // Sort + View Toggle + Document Buttons
+  sortData, toggleView, toggleViewAdmin, buildDocumentButtons,
   populateKategoriDbFilter, buildPublikasiCard, buildDatabaseCard
 });
 
