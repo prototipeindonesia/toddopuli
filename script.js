@@ -1,5 +1,5 @@
 /* ============================================================
-   TODDOPULI v5.0 - Script Utama
+   TODDOPULI v5.1 - Script Utama
    Firebase + Cloudinary + Chart + Excel + Realtime + Multi-Admin
    + Google Drive Link + OPD Management + Inovasi Extended
    + Filter + ROLE ADMIN OPD + APPROVAL + WIDGET + HKI EXTENDED
@@ -14,6 +14,8 @@
    + KOMPETISI INOVASI & RISET (Widget, Status, Deadline, Filter)
    + SORT (A-Z, Z-A, Tahun) + VIEW TOGGLE (Grid/List) + DOWNLOAD CARD
    + LIHAT DOKUMEN + GOOGLE SCHOLAR + FIX LIST VIEW + TAHUN DATABASE
+   + PUBLIKASI EXTENDED (Penulis, Nama Jurnal, Nama Penerbit, Topik,
+                          Nama Web Jurnal, Filter Topik, Filter Web Jurnal)
 ============================================================ */
 
 import {
@@ -96,14 +98,29 @@ const KATEGORI = {
     nama: 'Publikasi', icon: 'fa-book',
     fields: [
       { key:'judul', label:'Judul Publikasi', type:'text', required:true },
+      { key:'penulis', label:'Nama Penulis', type:'text', required:true },
       { key:'jenis', label:'Jenis', type:'select',
         options:['Laporan','Jurnal','Profil','Buku','Artikel'] },
+      { key:'nama_jurnal', label:'Nama Jurnal (khusus jenis Jurnal)', type:'text' },
+      { key:'nama_penerbit', label:'Nama Penerbit (khusus Buku / Artikel)', type:'text' },
+      { key:'topik', label:'Topik Publikasi', type:'select_or_text',
+        options:[
+          'Kesehatan','Pendidikan','Ekonomi','Infrastruktur',
+          'Lingkungan','Sosial','Teknologi','Pemerintahan',
+          'Pertanian','Pariwisata','Tata Ruang','Kependudukan'
+        ] },
       { key:'tahun', label:'Tahun', type:'text', required:true },
       { key:'deskripsi', label:'Deskripsi', type:'textarea', required:true },
       { key:'akses_file', label:'Akses File Publikasi', type:'select',
         options:['Publik','Terbatas'], required:true },
       { key:'dokumen', label:'Link Publikasi (Google Drive)', type:'text' },
-      { key:'link_scholar', label:'Link Google Scholar / Repositori (opsional)', type:'url' }
+      { key:'nama_web_jurnal', label:'Nama Web Jurnal / Repositori', type:'select_or_text',
+        options:[
+          'Google Scholar','Sinta','Garuda','Scopus','Crossref',
+          'ResearchGate','Academia.edu','DOAJ','Semantic Scholar',
+          'Portal Garuda','Neliti','IOS Press'
+        ] },
+      { key:'link_scholar', label:'Link Web Jurnal / Repositori (opsional)', type:'url' }
     ]
   },
   hki: {
@@ -517,7 +534,6 @@ function buildDocumentButtons(d, kategori) {
   const isAdmin = typeof isAdminOrAbove === 'function' && isAdminOrAbove();
   const label = fileKey === 'laporan' ? 'Laporan' : 'Dokumen';
 
-  // Publik atau admin → boleh lihat & download
   if (akses === 'Publik' || isAdmin) {
     const viewUrl = normalizeDriveUrl(fileUrl);
     const downloadUrl = normalizeDriveDownloadUrl(fileUrl);
@@ -537,7 +553,6 @@ function buildDocumentButtons(d, kategori) {
     </div>`;
   }
 
-  // Terbatas → minta akses
   return `<div class="card-btn-group">
     <button class="btn-card-download btn-card-locked"
       onclick="event.stopPropagation();openAccessRequest('${kategori}','${d.id}','${fileKey}')"
@@ -743,28 +758,48 @@ function buildRisetCard(d) {
   </div>`;
 }
 
+/* ⬇️⬇️⬇️ PUBLIKASI EXTENDED — Update buildPublikasiCard ⬇️⬇️⬇️ */
 function buildPublikasiCard(d) {
   const imgSrc = d.gambar ? getImageUrl(d.gambar) : '';
   const img = imgSrc ? `<img class="thumb" src="${esc(imgSrc)}" alt="" loading="lazy" onerror="this.style.display='none'">` : '';
   const hasImage = !!imgSrc;
   const desc = String(d.deskripsi || '');
   const descCut = desc.length > 120 ? desc.substring(0, 120) + '...' : desc;
+
   const jenis = d.jenis ? `<span class="badge badge-jenis">${esc(d.jenis)}</span>` : '';
   const tahun = d.tahun ? `<span class="badge">${esc(d.tahun)}</span>` : '';
-  const scholar = d.link_scholar
+  const penulis = d.penulis ? `<div class="meta"><i class="fas fa-user-pen"></i> ${esc(d.penulis)}</div>` : '';
+
+  // Info tambahan: jurnal atau penerbit
+  let extraInfo = '';
+  if (d.jenis === 'Jurnal' && d.nama_jurnal) {
+    extraInfo = `<span class="badge"><i class="fas fa-book-open"></i> ${esc(d.nama_jurnal)}</span>`;
+  } else if ((d.jenis === 'Buku' || d.jenis === 'Artikel') && d.nama_penerbit) {
+    extraInfo = `<span class="badge"><i class="fas fa-building-columns"></i> ${esc(d.nama_penerbit)}</span>`;
+  }
+
+  const topik = d.topik ? `<span class="badge badge-bentuk">${esc(d.topik)}</span>` : '';
+
+  // Badge web jurnal — pakai nama yang diinput user, default "Google Scholar"
+  const webName = d.nama_web_jurnal || 'Google Scholar';
+  const webBadge = d.link_scholar
     ? `<a href="${esc(d.link_scholar)}" target="_blank" rel="noopener"
          class="badge badge-scholar"
          onclick="event.stopPropagation();"
-         title="Lihat di Google Scholar">
-         <i class="fas fa-graduation-cap"></i> Scholar
+         title="Buka di ${esc(webName)}">
+         <i class="fas fa-graduation-cap"></i> <span class="badge-scholar-text">${esc(webName)}</span>
        </a>` : '';
+
   const docButtons = buildDocumentButtons(d, 'publikasi');
+
   return `<div class="item item-publikasi${hasImage ? '' : ' no-image'}" onclick="showDetail('publikasi','${d.id}')">
     ${img}<h4>${esc(d.judul)}</h4><p>${esc(descCut)}</p>
-    <div class="badge-row">${jenis}${tahun}${scholar}</div>
+    <div class="badge-row">${jenis}${tahun}${topik}${extraInfo}${webBadge}</div>
+    ${penulis}
     ${docButtons}
   </div>`;
 }
+/* ⬆️⬆️⬆️ END PUBLIKASI EXTENDED ⬆️⬆️⬆️ */
 
 function buildDatabaseCard(d) {
   const imgSrc = d.gambar ? getImageUrl(d.gambar) : '';
@@ -937,19 +972,34 @@ function populateKategoriRisetFilter() {
     list.map(k => `<option value="${esc(k)}"${k===cur?' selected':''}>${esc(k)}</option>`).join('');
 }
 
+/* ⬇️⬇️⬇️ PUBLIKASI EXTENDED — Update renderPublikasi + 2 filter helper ⬇️⬇️⬇️ */
 function renderPublikasi() {
   if (!$('listPublikasi')) return;
-  const q = ($('searchPub')?.value || '').toLowerCase();
-  const th = $('filterTahunPub')?.value || '';
-  const jenis = $('filterJenisPub')?.value || '';
+  const q      = ($('searchPub')?.value || '').toLowerCase();
+  const th     = $('filterTahunPub')?.value || '';
+  const jenis  = $('filterJenisPub')?.value || '';
+  const topik  = $('filterTopikPub')?.value || '';
+  const web    = $('filterWebPub')?.value || '';
   const sortBy = $('sortPublikasi')?.value || '';
 
+  populateTopikPubFilter();
+  populateWebPubFilter();
+
   let d = cachedData.publikasi;
+
   if (q) d = d.filter(x =>
     (x.judul||'').toLowerCase().includes(q) ||
-    (x.deskripsi||'').toLowerCase().includes(q));
-  if (th) d = d.filter(x => String(x.tahun) === String(th));
+    (x.deskripsi||'').toLowerCase().includes(q) ||
+    (x.penulis||'').toLowerCase().includes(q) ||
+    (x.nama_jurnal||'').toLowerCase().includes(q) ||
+    (x.nama_penerbit||'').toLowerCase().includes(q) ||
+    (x.topik||'').toLowerCase().includes(q) ||
+    (x.nama_web_jurnal||'').toLowerCase().includes(q));
+
+  if (th)    d = d.filter(x => String(x.tahun) === String(th));
   if (jenis) d = d.filter(x => x.jenis === jenis);
+  if (topik) d = d.filter(x => x.topik === topik);
+  if (web)   d = d.filter(x => x.nama_web_jurnal === web);
 
   d = sortData(d, sortBy);
 
@@ -959,6 +1009,31 @@ function renderPublikasi() {
     ? d.map(buildPublikasiCard).join('')
     : emptyMsg('Belum ada publikasi yang sesuai filter.');
 }
+
+function populateTopikPubFilter() {
+  const sel = $('filterTopikPub');
+  if (!sel) return;
+  const cur = sel.value;
+  const list = [...new Set(
+    (cachedData.publikasi || []).map(x => x.topik).filter(Boolean)
+  )].sort();
+  sel.innerHTML = '<option value="">Semua Topik</option>' +
+    list.map(k => `<option value="${esc(k)}"${k===cur?' selected':''}>${esc(k)}</option>`).join('');
+}
+
+function populateWebPubFilter() {
+  const sel = $('filterWebPub');
+  if (!sel) return;
+  const cur = sel.value;
+  const list = [...new Set(
+    (cachedData.publikasi || [])
+      .map(x => x.nama_web_jurnal)
+      .filter(Boolean)
+  )].sort();
+  sel.innerHTML = '<option value="">Semua Web Jurnal</option>' +
+    list.map(k => `<option value="${esc(k)}"${k===cur?' selected':''}>${esc(k)}</option>`).join('');
+}
+/* ⬆️⬆️⬆️ END PUBLIKASI EXTENDED ⬆️⬆️⬆️ */
 
 function renderHki() {
   if (!$('listHki')) return;
@@ -1157,6 +1232,17 @@ function showDetail(k, id) {
   if (k === 'riset' && d.kategori) {
     html += `<div class="badge-row" style="margin-bottom:14px;"><span class="badge badge-jenis">${esc(d.kategori)}</span></div>`;
   }
+  /* ⬇️ PUBLIKASI EXTENDED — Badge khusus di detail ⬇️ */
+  if (k === 'publikasi') {
+    let badges = '';
+    if (d.jenis) badges += `<span class="badge badge-jenis">${esc(d.jenis)}</span> `;
+    if (d.topik) badges += `<span class="badge badge-bentuk">${esc(d.topik)}</span> `;
+    if (d.nama_jurnal && d.jenis === 'Jurnal') badges += `<span class="badge"><i class="fas fa-book-open"></i> ${esc(d.nama_jurnal)}</span> `;
+    if (d.nama_penerbit && (d.jenis === 'Buku' || d.jenis === 'Artikel')) badges += `<span class="badge"><i class="fas fa-building-columns"></i> ${esc(d.nama_penerbit)}</span> `;
+    if (d.tahun) badges += `<span class="badge">${esc(d.tahun)}</span>`;
+    if (badges) html += `<div class="badge-row" style="margin-bottom:14px;">${badges}</div>`;
+  }
+  /* ⬆️ END PUBLIKASI EXTENDED ⬆️ */
   if (k === 'kompetisi') {
     let badges = '';
     if (d.kategori) badges += `<span class="badge badge-jenis">${esc(d.kategori)}</span> `;
@@ -1200,13 +1286,16 @@ function showDetail(k, id) {
 
   if (d.sertifikat) html += `<a href="${esc(normalizeDriveUrl(d.sertifikat))}" target="_blank" rel="noopener" class="btn-primary" style="margin-top:12px;text-decoration:none;display:inline-block;"><i class="fas fa-file-certificate"></i> Lihat Sertifikat</a> `;
 
+  /* ⬇️ PUBLIKASI EXTENDED — Link pakai nama web dinamis ⬇️ */
   if (k === 'publikasi' && d.link_scholar) {
+    const webName = d.nama_web_jurnal || 'Google Scholar';
     html += `<a href="${esc(d.link_scholar)}" target="_blank" rel="noopener"
       class="btn-primary"
       style="margin-top:12px;text-decoration:none;display:inline-block;background:#4285F4;">
-      <i class="fas fa-graduation-cap"></i> Lihat di Google Scholar
+      <i class="fas fa-graduation-cap"></i> Lihat di ${esc(webName)}
     </a> `;
   }
+  /* ⬆️ END PUBLIKASI EXTENDED ⬆️ */
 
   if (k === 'pelatihan' && d.link_pelatihan) {
     html += `<a href="${esc(d.link_pelatihan)}" target="_blank" rel="noopener" class="btn-ikuti" style="margin-top:12px;display:inline-block;text-decoration:none;"><i class="fas fa-external-link-alt"></i> Ikuti Pelatihan</a>`;
@@ -2029,6 +2118,7 @@ function applyRoleToUI() {
 
   updateStatusFilterVisibility();
   updatePelatihanInfoVisibility();
+  updatePublikasiInfoVisibility();  // ⬅️ BARU
   updateCrudToolbarVisibility();
 }
 
@@ -2050,6 +2140,15 @@ function updatePelatihanInfoVisibility() {
   const show = k === 'pelatihan' && (isAdminOpd() || isMasyarakat());
   infoPelatihan.style.display = show ? 'flex' : 'none';
 }
+
+/* ⬇️⬇️⬇️ BARU — Info Box Publikasi Extended ⬇️⬇️⬇️ */
+function updatePublikasiInfoVisibility() {
+  const k = currentAdminPage;
+  const infoPub = $('crudPublikasiInfo');
+  if (!infoPub) return;
+  infoPub.style.display = (k === 'publikasi') ? 'flex' : 'none';
+}
+/* ⬆️⬆️⬆️ END ⬆️⬆️⬆️ */
 
 function updateCrudToolbarVisibility() {
   const k = currentAdminPage;
@@ -2138,6 +2237,7 @@ function showAdminPage(page, btn) {
     const sf = $('crudStatusFilter'); if (sf) sf.value = '';
     updateStatusFilterVisibility();
     updatePelatihanInfoVisibility();
+    updatePublikasiInfoVisibility();  // ⬅️ BARU
     updateCrudToolbarVisibility();
     renderCrud();
   }
@@ -3128,7 +3228,10 @@ function globalSearch() {
   ['inovasi','riset','publikasi','hki','berita','pelatihan','database','kalender_kegiatan','kompetisi'].forEach(k => {
     let items = isAdminPage() ? (cachedData[k]||[]) : filterForPublic(k, cachedData[k]||[]);
     items.forEach(d => {
-      if ((d.judul||'').toLowerCase().includes(ql) || (d.deskripsi||'').toLowerCase().includes(ql))
+      if ((d.judul||'').toLowerCase().includes(ql) ||
+          (d.deskripsi||'').toLowerCase().includes(ql) ||
+          (d.penulis||'').toLowerCase().includes(ql) ||
+          (d.topik||'').toLowerCase().includes(ql))
         results.push({ k, id: d.id, judul: d.judul, kategori: KATEGORI[k].nama });
     });
   });
@@ -3196,6 +3299,7 @@ Object.assign(window, {
   waRequest, approveHkiRequest, rejectHkiRequest, waRegistration, approveRegistration, rejectRegistration,
   renderWidgetBerita, renderWidgetPelatihan, renderHomeWidgets,
   updatePelatihanInfoVisibility, updateCrudToolbarVisibility,
+  updatePublikasiInfoVisibility,  // ⬅️ BARU
   openAccessRequest, submitAccessRequest, renderAccessRequests,
   waAccessRequest, approveAccessRequest, rejectAccessRequest,
   // Kalender Kegiatan
@@ -3209,7 +3313,9 @@ Object.assign(window, {
   renderWidgetKompetisi, buildKompetisiCard, getKompetisiStatusBadge, getDeadlineInfo, getAutoKompetisiStatus,
   // Sort + View Toggle + Document Buttons
   sortData, toggleView, toggleViewAdmin, buildDocumentButtons,
-  populateKategoriDbFilter, buildPublikasiCard, buildDatabaseCard
+  populateKategoriDbFilter, buildPublikasiCard, buildDatabaseCard,
+  // Publikasi Extended  ⬅️ BARU
+  populateTopikPubFilter, populateWebPubFilter
 });
 
 // ============================================================
