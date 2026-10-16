@@ -1,5 +1,5 @@
 /* ============================================================
-   TODDOPULI - STYLESHEET v5.0
+   TODDOPULI - STYLESHEET v5.1
    Bapperida Kota Palopo
    Tema: Biru Navy Profesional
    + Admin OPD Support
@@ -15,6 +15,8 @@
    + KOMPETISI INOVASI & RISET (Card, Widget, Status, Deadline)
    + SORT DROPDOWN + VIEW TOGGLE (Grid/List) + DOWNLOAD BUTTON
    + LIHAT DOKUMEN + GOOGLE SCHOLAR BADGE + FIX LIST VIEW NO-IMAGE
+   + PUBLIKASI EXTENDED (Penulis, Jurnal, Penerbit, Topik,
+                          Nama Web Jurnal dinamis)
 ============================================================ */
 
 /* ==================== RESET & VARIABEL ==================== */
@@ -424,7 +426,7 @@ main { padding: 40px 16px 60px; }
 
 
 /* ============================================================
-   CARD BUTTON GROUP — Lihat + Download (BARU)
+   CARD BUTTON GROUP — Lihat + Download
 ============================================================ */
 .card-btn-group {
   display: flex;
@@ -504,17 +506,21 @@ main { padding: 40px 16px 60px; }
 
 
 /* ============================================================
-   BADGE GOOGLE SCHOLAR (BARU)
+   BADGE WEB JURNAL / REPOSITORI (v5.1 — dinamis)
+   Bisa: Google Scholar, Sinta, Garuda, Scopus, ResearchGate, dll.
+   User bisa input nama custom → tampil sebagai badge dengan truncate.
 ============================================================ */
 .badge.badge-scholar {
   background: var(--scholar) !important;
   color: #fff !important;
   display: inline-flex;
   align-items: center;
-  gap: 4px;
+  gap: 5px;
   text-decoration: none;
   transition: 0.2s;
   cursor: pointer;
+  max-width: 100%;
+  vertical-align: middle;
 }
 .badge.badge-scholar:hover {
   background: #1a73e8 !important;
@@ -523,6 +529,29 @@ main { padding: 40px 16px 60px; }
 }
 .badge.badge-scholar i {
   font-size: 9px;
+  flex-shrink: 0;
+}
+
+/* Truncate nama web jurnal yang panjang */
+.badge.badge-scholar .badge-scholar-text {
+  display: inline-block;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  vertical-align: middle;
+  line-height: 1.2;
+}
+
+/* Responsive — badge lebih kecil di HP */
+@media (max-width: 480px) {
+  .badge.badge-scholar .badge-scholar-text {
+    max-width: 80px;
+  }
+  .badge.badge-scholar {
+    font-size: 10px;
+    padding: 3px 9px;
+  }
 }
 
 
@@ -608,7 +637,6 @@ main { padding: 40px 16px 60px; }
 
 /* ============================================================
    FIX: NO-IMAGE ITEMS (Database, dll)
-   Ketika card tidak punya gambar → layout single column
 ============================================================ */
 .list-grid.view-list .item.no-image,
 .list-grid.view-list .item:not(:has(img.thumb)) {
@@ -747,9 +775,25 @@ main { padding: 40px 16px 60px; }
   color: #92400E !important;
 }
 
-/* Card khusus Publikasi */
+/* ============================================================
+   PUBLIKASI EXTENDED — Card khusus Publikasi (v5.1)
+============================================================ */
 .item-publikasi {
   border-left-color: var(--scholar);
+}
+.item-publikasi .badge-row {
+  gap: 5px;
+}
+.item-publikasi .meta {
+  font-size: 11px;
+  color: #64748B;
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.item-publikasi .meta i {
+  color: var(--scholar);
 }
 
 /* Card khusus Database */
@@ -1551,6 +1595,7 @@ body:has(#crudTitle i.fa-trophy) #crudList .crud-item:hover {
   flex-wrap: wrap;
   gap: 6px;
   margin-top: 8px;
+  align-items: center;
 }
 .badge-jenis {
   background: #FEF3C7 !important;
@@ -2628,5 +2673,14 @@ body:has(#crudTitle i.fa-trophy) #crudList .crud-item:hover {
     padding-top: 12px;
     margin-top: 8px;
     min-width: auto;
+  }
+
+  /* Badge web jurnal di HP (khusus publikasi) */
+  .badge.badge-scholar {
+    font-size: 10px;
+    padding: 3px 9px;
+  }
+  .badge.badge-scholar .badge-scholar-text {
+    max-width: 70px;
   }
 }
