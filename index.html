@@ -283,11 +283,11 @@
       </div>
     </div>
 
-    <!-- Toolbar Publikasi: Search + 2 Filter + Sort + View Toggle -->
+    <!-- ⬇️ Toolbar Publikasi (dengan Filter Topik BARU + Sort + View Toggle) -->
     <div class="toolbar toolbar-inovasi">
       <div class="toolbar-search">
         <i class="fas fa-search toolbar-icon"></i>
-        <input type="text" id="searchPub" placeholder="Cari publikasi..." oninput="renderPublikasi()">
+        <input type="text" id="searchPub" placeholder="Cari judul / penulis / jurnal / topik..." oninput="renderPublikasi()">
       </div>
       <select id="filterTahunPub" onchange="renderPublikasi()">
         <option value="">Semua Tahun</option>
@@ -300,6 +300,11 @@
         <option>Profil</option>
         <option>Buku</option>
         <option>Artikel</option>
+      </select>
+      <!-- ⬇️ Filter Topik BARU -->
+      <select id="filterTopikPub" onchange="renderPublikasi()">
+        <option value="">Semua Topik</option>
+        <!-- Options diisi otomatis oleh JS -->
       </select>
       <select id="sortPublikasi" onchange="renderPublikasi()" title="Urutkan">
         <option value="">Terbaru</option>
